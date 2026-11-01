@@ -1,0 +1,73 @@
+### Título vazio → 400 com details
+POST http://localhost:3000/tasks
+Content-Type: application/json
+
+{ "title": "  " }
+
+### Sem corpo → 400
+POST http://localhost:3000/tasks
+
+
+### Título com tipo errado → 400
+
+POST http://localhost:3000/tasks
+Content-Type: application/json
+
+{ "title": 123 }
+
+
+### JSON quebrado → 400
+
+POST  http://localhost:3000/tasks
+Content-Type: application/json
+
+{ "title": }
+
+### Criar (rode duas vezes: a segunda deve dar 409)
+
+POST  http://localhost:3000/tasks
+Content-Type: application/json
+
+{ "title": "Estudar Zod" }
+
+### PATCH vazio → 400
+
+PATCH http://localhost:3000/tasks/1
+Content-Type: application/json
+
+{}
+
+### Id inválido → 400
+
+GET http://localhost:3000/tasks/abc
+
+### Filtro inválido → 400
+
+GET http://localhost:3000/tasks?done=talvez
+
+### Filtro válido → 200
+
+GET http://localhost:3000/tasks?done=true
+
+### Rota inexistente → 404 em JSON
+
+GET http://localhost:3000/xyz
+
+### Listar
+
+GET http://localhost:3000/tasks
+
+### Buscar uma
+
+GET http://localhost:3000/tasks/1
+
+### Marcar como concluída
+
+PATCH http://localhost:3000/tasks/1
+Content-Type: application/json
+
+{ "done": true }
+
+### Remover
+
+DELETE http://localhost:3000/tasks/1

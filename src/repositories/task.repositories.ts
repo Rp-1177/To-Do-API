@@ -1,58 +1,57 @@
-import { Task } from "../types/task";
-
-const tasks: Task[] = [];
-let nextId = 1;
-
-// O array e o contador ficam aqui dentro, escondidos. Ninguém de fora mexe neles diretamente, só pelas funções que o repository oferece. É como o estoque: o garçom não entra lá, pede ao estoquista.
-
-// Decisão 1: o repository não valida nada. Se você pedir create(""), ele cria uma tarefa vazia sem reclamar. Isso parece errado, mas é de propósito: validar é trabalho do chef (service). O estoquista guarda o que lhe entregam. Misturar as duas coisas é o jeito mais rápido de a bagunça voltar.
+import { prisma } from "../lib/prisma";
+import type { Task } from "../types/task";
 
 export const taskRepository = {
-    findAll(filters: { done?: boolean | undefined } = {}): Task[] {
-        if (filters.done === undefined) return tasks;
-        return tasks.filter((t) => t.done === filters.done);
-    },
+  findAll(filters: { done?: boolean | undefined } = {}): Promise<Task[]> {
+    return prisma.task.findMany({
+      where: filters.done === undefined ? {} : { done: filters.done },
+      orderBy: { id: "asc" },
+    });
+  },
 
-    findByTitle(title: string): Task | undefined {
-        return tasks.find((t) => t.title.toLowerCase() === title.toLowerCase());
-    },
+  findById(id: number): Promise<Task | null> {
 
-    findById(id: number): Task | undefined {  // "talvez tenha, talvez não"
-        
-// Decisão 2: quando não acha, devolve undefined ou false em vez de dar erro.
-        
-        return tasks.find((t) => t.id ===id);
-    },
+// null no lugar de undefined. O Prisma usa null para “não achei”, então o tipo vira Task | null. O service continua testando if (!task), que funciona nos dois casos.
 
-    create(title: string): Task {
-        const task: Task = {
-            id: nextId++,
-            title,
-            done: false,
-            createdAt: new Date().toISOString(),
-        };
-        tasks.push(task);
-        return task;
-    },
+    return prisma.task.findUnique({ where: { id } });
+  },
 
-    update(id: number, data: { title?: string | undefined; done?: boolean | undefined }): Task | undefined {
-        const task = tasks.find((t) => t.id === id);
-        if (!task) return undefined;
-        Object.assign(task,data);
+// findUnique vs findFirst: findUnique busca por coluna única (como o id); findFirst serve para filtros comuns (como o title).
 
-// Decisão 3: por que Object.assign(task, data) no update? Ele copia os campos de data para dentro de task. Se data for { done: true }, só o done muda e o resto permanece. É o PATCH em ação: alterar só o que foi enviado.
 
-        return task;
-    },
+  findByTitle(title: string): Promise<Task | null> {
+    return prisma.task.findFirst({ where: { title } });
+  },
 
-    remove(id: number): boolean { // true = apagou, false = não existia
-        const index = tasks.findIndex((t) => t.id === id);
-        if (index === -1) return false;
-        tasks.splice(index, 1);
-        return true;
-    },
+  create(title: string): Promise<Task> {
+    return prisma.task.create({ data: { title } });
+  },
+
+  async update(
+    id: number,
+    data: { title?: string | undefined; done?: boolean | undefined }
+  ): Promise<Task | null> {
+    const changes: { title?: string; done?: boolean } = {};
+    if (data.title !== undefined) changes.title = data.title;
+    if (data.done !== undefined) changes.done = data.done;
+
+    const { count } = await prisma.task.updateMany({
+
+// updateMany/deleteMany com count: o update e o delete “normais” do Prisma lançam erro se a linha não existir. Com as versões Many recebemos um count (quantas linhas foram afetadas)
+
+      where: { id },
+      data: changes,
+
+// O objeto changes monta os campos que realmente chegaram, sem nenhum undefined dentro. Isso também evita o problema do exactOptionalPropertyTypes
+
+    });
+    if (count === 0) return null;
+
+    return prisma.task.findUnique({ where: { id } });
+  },
+
+  async remove(id: number): Promise<boolean> {
+    const { count } = await prisma.task.deleteMany({ where: { id } });
+    return count > 0;
+  },
 };
-
-// ele não valida nada e não responde HTTP. Só guarda e busca. Quando não acha, devolve undefined ou false e deixa a decisão para quem chamou.
-
-// “Não achei” não é um erro para o estoquista, é uma informação. Quem decide se isso é um problema (404) é o service. O tipo Task | undefined obriga o TypeScript a te lembrar de tratar o caso de não achar.

@@ -1,6 +1,6 @@
 // É o ponto único que transforma erros em respostas HTTP:
 
-import { NextFunction, Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import { AppError } from "../errors/appError";
 

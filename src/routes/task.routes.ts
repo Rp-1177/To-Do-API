@@ -2,8 +2,13 @@
 
 import { Router } from "express";
 import * as taskController from "../controllers/task.controller";
+import { authenticate } from "../middlewares/authenticate";
 
 const router = Router();
+
+router.use(authenticate); // tudo abaixo exige login
+
+// O router.use(authenticate) protege todas as rotas abaixo dele de uma vez, em vez de repetir em cada uma
 
 router.get("/", taskController.list);
 router.get("/:id", taskController.getOne);

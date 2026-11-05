@@ -1,73 +1,50 @@
-### Título vazio → 400 com details
-POST http://localhost:3000/tasks
+@baseUrl = http://localhost:3000
+
+### 1. Registrar
+
+POST {{baseUrl}}/auth/register
 Content-Type: application/json
 
-{ "title": "  " }
+{ "name": "Caio", "email": "caio@example.com", "password": "senha-forte-123" }
 
-### Sem corpo → 400
-POST http://localhost:3000/tasks
+#### 2. Login
 
-
-### Título com tipo errado → 400
-
-POST http://localhost:3000/tasks
+# @name Login
+POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
-{ "title": 123 }
+{ "email": "caio@example.com", "password": "senha-forte-123" }
 
+### 3. Quem sou eu
 
-### JSON quebrado → 400
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{login.response.body.$.token}}
 
-POST  http://localhost:3000/tasks
+### 4. Criar tarefa (com token)
+
+POST {{baseUrl}}/tasks
+Authorization: Bearer {{login.response.body.$.token}}
 Content-Type: application/json
 
-{ "title": }
+{ "title": "Estudar autenticação" }
 
-### Criar (rode duas vezes: a segunda deve dar 409)
+### 5. Listar (com token)
 
-POST  http://localhost:3000/tasks
+GET {{baseUrl}}/tasks
+Authorization: Bearer {{login.response.body.$.token}}
+
+### 6. Sem token > 401
+
+GET {{baseUrl}}/tasks
+
+### 7. Token adulterado > 401
+
+GET {{baseUrl}}/tasks
+Authorization: Bearer abc.dfg.ghi
+
+### 8. Senha errada > 401
+
+POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
-{ "title": "Estudar Docker" }
-
-### PATCH vazio → 400
-
-PATCH http://localhost:3000/tasks/1
-Content-Type: application/json
-
-{}
-
-### Id inválido → 400
-
-GET http://localhost:3000/tasks/abc
-
-### Filtro inválido → 400
-
-GET http://localhost:3000/tasks?done=talvez
-
-### Filtro válido → 200
-
-GET http://localhost:3000/tasks?done=true
-
-### Rota inexistente → 404 em JSON
-
-GET http://localhost:3000/xyz
-
-### Listar
-
-GET http://localhost:3000/tasks
-
-### Buscar uma
-
-GET http://localhost:3000/tasks/1
-
-### Marcar como concluída
-
-PATCH http://localhost:3000/tasks/1
-Content-Type: application/json
-
-{ "done": true }
-
-### Remover
-
-DELETE http://localhost:3000/tasks/1
+{ "email": "caio@example.com", "password": "senha-errada-123" }

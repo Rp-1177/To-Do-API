@@ -12,9 +12,29 @@ datasource db {
   provider = "sqlite"
 }
 
-model Task {
-  id       Int      @id @default(autoincrement())
-  title    String
-  done     Boolean  @default(false)
-  createdAt DateTime @default(now())
+model User {
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  name          String
+  passwordHash  String
+  createdAt     DateTime @default(now())
+  tasks         Task[]
 }
+
+model Task {
+  id            Int      @id @default(autoincrement())
+  title         String
+  done          Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+//@unique no e-mail: o banco garante que não existem dois usuários com o mesmo e-mail.
+//passwordHash: o nome já avisa que aqui vai o hash, nunca a senha.
+//user User @relation(fields: [userId], references: [id]): é o lado que tem a chave estrangeira. Diz “o userId desta tarefa aponta para o id de um User”.
+//tasks Task[]: o lado inverso. Não vira coluna; só permite ao Prisma navegar do usuário para as tarefas.
+//onDelete: Cascade: se o usuário for apagado, as tarefas dele vão junto (em vez de ficarem órfãs).
+//@@index([userId]): um índice, como o índice remissivo de um livro. Toda consulta nossa filtra por userId, e o índice a mantém rápida mesmo com milhões de linhas.

@@ -1,5 +1,6 @@
 // monta a aplicação:
 
+import authRoutes from "./routes/auth.routes";
 import express from "express";
 import taskRoutes from "./routes/task.routes";
 import { AppError } from "./errors/appError";
@@ -13,6 +14,7 @@ app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
 });
 
+app.use("/auth", authRoutes);
 app.use("/tasks", taskRoutes);
 
 // Se chegou aqui, nenhuma rota atendeu o pedido

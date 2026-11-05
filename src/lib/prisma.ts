@@ -4,15 +4,11 @@ import "dotenv/config";
 
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "../generated/prisma/client";
-
-const url = process.env.DATABASE_URL;
-if(!url) {
-    throw new Error("DATABASE_URL não definida no .env");
-}
+import { env } from "../config/env";
 
 // A checagem do url faz o programa falhar na hora, com mensagem clara, se a configuração estiver faltando. É melhor do que um erro estranho minutos depois.
 
-const adapter = new PrismaBetterSqlite3({ url });
+const adapter = new PrismaBetterSqlite3({ url: env.DATABASE_URL });
 
 export const prisma = new PrismaClient({ adapter });
 

@@ -1,6 +1,7 @@
 // O garçom: pega as coisas do req, chama o service e devolve a resposta.
 
 import type { Request, Response } from "express";
+import { requireUserId } from "../middlewares/authenticate";
 import {
     createTaskSchema,
     idParamSchema,
@@ -16,29 +17,34 @@ export async function list(req: Request, res: Response) {
 
 // O await não é opcional. Sem ele, o controller enviaria a Promise em vez do resultado (você veria {} na resposta), e erros como o 404 escapariam sem tratamento.
 
+    const userId = requireUserId(req);
     const filters = listTasksQuerySchema.parse(req.query);
-    res.json(await taskService.listTasks(filters));
+    res.json(await taskService.listTasks(userId, filters));
 }
 
 export async function getOne(req: Request, res: Response) {
+    const userId = requireUserId(req);
     const { id } = idParamSchema.parse(req.params);
-    res.json(await taskService.getTaskById(id));
+    res.json(await taskService.getTaskById(userId, id));
 }
 
 export async function create(req: Request, res: Response) {
+    const userId = requireUserId(req);
     const input = createTaskSchema.parse(req.body);
-    res.status(201).json(await taskService.createTask(input));
+    res.status(201).json(await taskService.createTask(userId, input));
 }
 
 export async function update(req: Request, res: Response) {
+    const userId = requireUserId(req);
     const { id } = idParamSchema.parse(req.params);
     const input = updateTaskSchema.parse(req.body);
-    res.json(await taskService.updateTask(id, input));
+    res.json(await taskService.updateTask(userId, id, input));
 }
 
 export async function remove(req: Request, res: Response) {
+    const userId = requireUserId(req);
     const { id } = idParamSchema.parse(req.params);
-    await taskService.deleteTask(id);
+    await taskService.deleteTask(userId, id);
     res.status(204).send();
 }
 

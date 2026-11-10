@@ -1,30 +1,95 @@
 // monta a aplicação:
-
-import authRoutes from "./routes/auth.routes";
+import cors from "cors";
 import express from "express";
-import taskRoutes from "./routes/task.routes";
+import helmet from "helmet";
+import { env } from "./config/env";
 import { AppError } from "./errors/appError";
+import { prisma } from "./lib/prisma";
 import { errorHandler } from "./middlewares/errorHandler";
+import { httpLogger } from "./middlewares/httpLogger";
+import { createRateLimiter } from "./middlewares/ratelimit";
+import authRoutes from "./routes/auth.routes";
+import taskRoutes from "./routes/task.routes";
 
-const app = express();
+interface AppOptions {
+  generalLimit?: number;
+  authLimit?: number;
+}
 
-app.use(express.json());
+export function createApp(options: AppOptions = {}) {
+  const generalLimit = options.generalLimit ?? env.RATE_LIMIT_MAX;
+  const authLimit = options.authLimit ?? env.AUTH_RATE_LIMIT_MAX;
 
-app.get("/health", (_req, res) => {
+// Uma função que monta e devolve a aplicação. Cada chamada cria um app novo, com limitadores novos e contadores zerados. É uma forma leve de injeção de dependência: em vez de a função ler valores fixos do ambiente, ela os recebe como parâmetro (com padrões).
+// ?? vs ||: o ?? só usa o valor da direita se o da esquerda for null ou undefined. O || também trocaria valores “falsos” como o número 0. Para configuração numérica, ?? é o correto.
+// interface AppOptions com campos opcionais (?): chamar createApp() sem nada continua válido.
+
+  const app = express();
+
+  // Quantos proxies confiáveis existem na frente (0 = nenhum)
+  app.set("trust proxy", env.TRUST_PROXY_HOPS);
+
+  app.use(httpLogger);
+  app.use(helmet());
+  app.use(
+    cors({
+      origin: env.CORS_ORIGINS,
+      methods: ["GET", "POST", "PATCH", "DELETE"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+      maxAge: 600,
+    })
+  );
+
+  // Health checks ficam ANTES dos limitadores: não podem ser bloqueados
+  app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
-});
+  });
 
-app.use("/auth", authRoutes);
-app.use("/tasks", taskRoutes);
+  app.get("/health/ready", async (_req, res) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      res.json({ status: "ready" });
+    } catch {
+      res.status(503).json({ status: "unavailable" });
+    }
+  });
 
-// Se chegou aqui, nenhuma rota atendeu o pedido
-app.use((_req, _res) => {
-    throw new AppError("Rota não encontrada", 404)
-});
+  app.use(createRateLimiter(generalLimit));
 
-app.use(errorHandler); // sempre por último
+  // Um limitador só para as duas rotas: tentativas de login e cadastros somam
+  const authLimiter = createRateLimiter(authLimit);
+  app.use("/auth/login", authLimiter);
+  app.use("/auth/register", authLimiter);
 
-export default app;
+  app.use(express.json({ limit: "10kb" }));
+
+  app.use("/auth", authRoutes);
+  app.use("/tasks", taskRoutes);
+
+  // Se chegou aqui, nenhuma rota atendeu o pedido
+  app.use((_req, _res) => {
+    throw new AppError("Rota não encontrada", 404);
+  });
+
+  app.use(errorHandler); // sempre por último
+
+  return app;
+}
+
+export default createApp();
+
+
+// log → helmet → cors → health → limite geral → limite de auth → leitura do JSON → rotas → 404 → erros
+// O CORS vem antes dos limitadores para os preflights (OPTIONS) serem respondidos sem gastar a cota.
+// Os limitadores vêm antes da leitura do corpo: pedido bloqueado nem chega a ser processado.
+// O limite de 10kb basta para esta API: o maior corpo possível é um cadastro de poucas linhas. Passou disso, é 413.
+
+// Se...	                                                    O problema
+// O /health viesse depois do limitador	                      Sob ataque, o balanceador seria bloqueado, acharia que a API caiu e a reiniciaria, o que piora a situação. O teste “nunca limita os health checks” existe por isso
+// O express.json viesse antes dos limitadores	              Gastaríamos processamento lendo o corpo de pedidos que seriam bloqueados mesmo
+// O cors viesse depois do limitador	                        Cada preflight consumiria a cota do usuário legítimo
+// O httpLogger não fosse o primeiro	                        Pedidos bloqueados ficariam invisíveis no log
+// O errorHandler não fosse o último	                        Erros não chegariam a ele
 
 // interface Task define o formato de uma tarefa. O TypeScript passa a avisar se você usar um campo que não existe.
 // Caixa	     Onde aparece	         Para que serve	                      Exemplo

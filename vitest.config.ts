@@ -8,10 +8,15 @@ export default defineConfig({
         setupFiles: ["./src/tests/setup.ts"],
         fileParallelism: false,
         env: {
+            NODE_ENV: "test",
             DATABASE_URL: "file:./test.db",
             JWT_SECRET: "segredo-somente-para-testes-com-mais-de-32-caracteres",
             JWT_EXPIRES_IN_SECONDS: "3600",
             BCRYPT_COST: "4",
+            LOG_LEVEL: "silent",
+            CORS_ORIGINS: "http://localhost:5173",
+            RATE_LIMIT_MAX: "100000",
+            AUTH_RATE_LIMIT_MAX: "100000",
         }
     }
 });

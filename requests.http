@@ -18,15 +18,15 @@ Content-Type: application/json
 ### 3. Quem sou eu
 
 GET {{baseUrl}}/auth/me
-Authorization: Bearer {{login.response.body.$.token}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3OTQyNTE3MTEsImV4cCI6MTc5NDI1NTMxMSwic3ViIjoiMSJ9.c-kVmuidCEmPrwprxe_4W5XjWmymJLLpCkDlhY1679c
 
 ### 4. Criar tarefa (com token)
 
 POST {{baseUrl}}/tasks
-Authorization: Bearer {{login.response.body.$.token}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3OTQyNTE3MTEsImV4cCI6MTc5NDI1NTMxMSwic3ViIjoiMSJ9.c-kVmuidCEmPrwprxe_4W5XjWmymJLLpCkDlhY1679c
 Content-Type: application/json
 
-{ "title": "Estudar autenticação" }
+{ "title": "Estudar full-stack" }
 
 ### 5. Listar (com token)
 

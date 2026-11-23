@@ -9,7 +9,7 @@ const envSchema = z.object({
 
     .default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
-  DATABASE_URL: z.string().min(1, "DATABASE_URL é obrigatória"),
+  DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\//,"DATABASE_URL deve ser uma URL do PostgreSQL (postgresql://...)"),
   JWT_SECRET: z
     .string()
     .min(32, "JWT_SECRET deve ter pelo menos 32 caracteres"),
@@ -31,6 +31,15 @@ const envSchema = z.object({
 // O transform do CORS_ORIGINS: o .env só guarda texto, mas queremos uma lista. A cadeia faz: "a, b,c" → .split(",") → ["a", " b", "c"] → .map(trim) → remove espaços → .filter(Boolean) descarta vazios. Um texto vazio vira [], e lista vazia = nenhum site de navegador autorizado. O padrão é o lado seguro.
 
     ),
+
+    DOCS_ENABLED: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((value) => value === "true"),
+
+// Por que não z.coerce.boolean()? Porque ele converte com a regra do JavaScript: qualquer texto não vazio é true, inclusive "false". Seria uma armadilha: DOCS_ENABLED=false ligaria a documentação. A solução é aceitar só "true" ou "false" e comparar.
+
+
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),

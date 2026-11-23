@@ -10,6 +10,8 @@ import { httpLogger } from "./middlewares/httpLogger";
 import { createRateLimiter } from "./middlewares/ratelimit";
 import authRoutes from "./routes/auth.routes";
 import taskRoutes from "./routes/task.routes";
+import swaggerUi from "swagger-ui-express";
+import { openApiDocument } from "./docs/openapi";
 
 interface AppOptions {
   generalLimit?: number;
@@ -53,6 +55,54 @@ export function createApp(options: AppOptions = {}) {
       res.status(503).json({ status: "unavailable" });
     }
   });
+
+// Documentação: antes dos limitadores (são arquivos estáticos) e com CSP própria
+
+if (env.DOCS_ENABLED) {
+  app.get("/openapi.json", (_req, res) => {
+    res.json(openApiDocument);
+  });
+
+  app.use(
+    "/docs",
+    helmet.contentSecurityPolicy({
+      useDefaults: false,
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:"],
+        fontSrc: ["'self'", "data:"],
+
+// Diretiva	                                    Significa
+// defaultSrc:["'self'"]	                      Para tudo que não foi especificado: só da própria origem
+// scriptSrc: ["'self'"]	                      Scripts: só da própria origem
+// styleSrc: ["'self'", "'unsafe-inline'"]	    Estilos: da própria origem e os embutidos na página (o Swagger usa)
+// imgSrc: ["'self'", "data:"]	                Imagens: da própria origem e as embutidas (data:)
+// fontSrc: ["'self'", "data:"]	                Fontes: idem
+// useDefaults: false	                          Não misture com os padrões do Helmet: use só o que listei (isso elimina o upgrade-insecure-requests)
+
+      },
+    }),
+
+    ...swaggerUi.serve,
+    swaggerUi.setup(openApiDocument, {
+      customSiteTitle: "Todo API",
+      swaggerOptions: { persistAuthorization: true},
+    })
+  );
+}
+
+// A CSP só vale em /docs. O helmet() global já definiu uma CSP restritiva; este middleware, montado só neste caminho, a substitui nessa rota. O resto da API segue com a política padrão. Repare que useDefaults: false também elimina a diretiva upgrade-insecure-requests, que quebra a página em HTTP local.
+// Antes dos limitadores: carregar a página dispara vários pedidos de arquivos (CSS e JS). Sem isso, abrir a documentação algumas vezes gastaria a cota de 100 requisições do seu IP.
+// ...swaggerUi.serve é uma lista de handlers (serve os arquivos estáticos do Swagger UI) e o setup devolve a página principal com o seu documento.
+// persistAuthorization guarda o token no localStorage do navegador para você não colar de novo a cada recarga
+
+// São duas saídas do mesmo documento:
+
+// Rota	          O que entrega	                  Para quem
+// /openapi.json	O documento cru	                Máquinas: Postman, Insomnia, geradores, testes
+// /docs	        A página bonita e interativa	  Humanos
 
   app.use(createRateLimiter(generalLimit));
 

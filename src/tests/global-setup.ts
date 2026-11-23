@@ -1,16 +1,12 @@
 import { execSync } from "node:child_process";
-import { rmSync } from "node:fs";
+import { TEST_DATABASE_URL } from "./constants";
 
 export default function setup() {
     // Começa sempre de um banco de teste novo
-    for (const suffix of ["", "-journal", "-wal", "-shm"]) {
-        rmSync(`./test.db${suffix}`, { force: true });
-    }
-
  // Cria as tabelas aplicando as migrations que já existem
     execSync("npx prisma migrate deploy", {
         stdio: "inherit",
-        env: { ...process.env, DATABASE_URL: "file:./test.db" },
+        env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
     });
 }
 

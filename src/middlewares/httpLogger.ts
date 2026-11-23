@@ -21,6 +21,8 @@ export const httpLogger = pinoHttp({
 
      // Balanceadores chamam /health o tempo todo: não polui o log
      autoLogging: {
-        ignore: (req) => req.url?.startsWith("/health") ?? false,
+        ignore: (req) => req.url?.startsWith("/health") || req.url?.startsWith("/docs") || false,
      },
 });
+
+// O ?. evita erro se url for indefinida, e o || false garante que o resultado seja sempre um booleano (porque o startsWith encadeado com ?. pode produzir undefined).

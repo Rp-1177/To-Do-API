@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: todo-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: todo
+      POSTGRES_PASSWORD: ruan1177
+      POSTGRES_DB: todo_dev
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - todo_pgdata:/var/lib/postgresql
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U todo -d todo_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  todo_pgdata:
+
+# Trecho	                            Por quê
+
+# image: postgres:18-alpine	          Fixamos a versão principal (18). Nunca use só postgres ou latest: uma atualização automática poderia quebrar o banco. alpine é a variante pequena
+# restart: unless-stopped	            O container volta sozinho se o Docker reiniciar
+# POSTGRES_USER/PASSWORD/DB	          Criam o usuário e o banco todo_dev na primeira inicialização
+# "127.0.0.1:5432:5432"	              Formato host:container. O 127.0.0.1 na frente faz a porta valer só para o seu computador. Sem ele, o Docker publica em todas as interfaces e o banco ficaria acessível a quem estiver na sua rede
+# todo_pgdata:/var/lib/postgresql	    O volume com os dados. Atenção ao caminho: segundo a documentação da imagem, a partir do PostgreSQL 18 o volume deve ser montado em /var/lib/postgresql; até a versão 17 era /var/lib/postgresql/data. Montar no caminho antigo faz os dados não persistirem
+# docker-entrypoint-initdb.d	        Todo .sql dessa pasta roda uma vez, na primeira inicialização. É como criamos o banco todo_test
+# healthcheck	                        O Docker testa a cada 5 s se o banco responde
+# -h 127.0.0.1 no pg_isready	        Durante a inicialização, o Postgres sobe um servidor temporário só por socket interno. Testando por TCP (127.0.0.1), só ficamos “saudáveis” quando o servidor definitivo está de pé, já com os scripts de init executados
+
+# Comando	                            O que faz
+# docker compose stop	                Para o banco (mantém tudo)
+# docker compose down	                Remove o container (mantém os dados, que estão no volume)
+# docker compose down -v	            Remove container e volume: apaga todos os dados

@@ -1,4 +1,5 @@
 import { defineConfig } from "vitest/config";
+import { TEST_DATABASE_URL } from "./src/tests/constants"
 
 export default defineConfig({
     test: {
@@ -9,7 +10,7 @@ export default defineConfig({
         fileParallelism: false,
         env: {
             NODE_ENV: "test",
-            DATABASE_URL: "file:./test.db",
+            DATABASE_URL: TEST_DATABASE_URL,
             JWT_SECRET: "segredo-somente-para-testes-com-mais-de-32-caracteres",
             JWT_EXPIRES_IN_SECONDS: "3600",
             BCRYPT_COST: "4",
@@ -17,6 +18,7 @@ export default defineConfig({
             CORS_ORIGINS: "http://localhost:5173",
             RATE_LIMIT_MAX: "100000",
             AUTH_RATE_LIMIT_MAX: "100000",
+            DOCS_ENABLED: "true",
         }
     }
 });
